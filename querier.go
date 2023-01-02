@@ -22,6 +22,7 @@ type CRUDStore[T any] interface {
 	Get(context.Context, string) (*T, error)
 	Put(context.Context, string, T) error
 	Delete(context.Context, string) error
+	List(context.Context, string) *storage.ObjectIterator
 }
 
 // querier implements the CRUDStore interface.
