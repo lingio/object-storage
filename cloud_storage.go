@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 
 	"cloud.google.com/go/storage"
 )
@@ -41,6 +42,23 @@ func NewCloudStorage(bucket string, opts ...Option) (*CloudStorage, error) {
 
 func (cs *CloudStorage) Filename(key string) string {
 	return fmt.Sprintf(cs.filenameformat, key)
+}
+
+func (cs *CloudStorage) WriteFile(ctx context.Context, key string, reader io.Reader) error {
+	o := cs.bucket.Object(cs.Filename(key)).
+		If(storage.Conditions{DoesNotExist: true})
+
+	writer := o.NewWriter(ctx)
+	writer.ContentType = "application/json"
+
+	if _, err := io.Copy(writer, reader); err != nil {
+		return err
+	}
+	if err := writer.Close(); err != nil {
+		// NOTE (Axel): Close()ing will commit any data written, so only do it in the happy path
+		return err
+	}
+	return nil
 }
 
 // Options configures the CloudStorage.
