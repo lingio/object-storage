@@ -82,6 +82,10 @@ func (cs *CloudStorage) GetFile(ctx context.Context, key string) ([]byte, error)
 	return data, nil
 }
 
+func (cs *CloudStorage) Object(ctx context.Context, key string) *storage.ObjectHandle {
+	return cs.bucket.Object(cs.Filename(key))
+}
+
 // Options configures the CloudStorage.
 //	WithFilenameFormat
 type Option interface {
