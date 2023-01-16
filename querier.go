@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"cloud.google.com/go/storage"
 )
@@ -36,34 +35,16 @@ func NewCRUDStore[T any](cs *CloudStorage) CRUDStore[T] {
 
 // Create
 func (q *querier[T]) Create(ctx context.Context, key string, obj T) error {
-	o := q.cs.bucket.Object(q.cs.Filename(key)).
-		If(storage.Conditions{DoesNotExist: true})
-
-	writer := o.NewWriter(ctx)
-	writer.ContentType = "application/json"
-
-	if data, err := json.Marshal(&obj); err != nil {
-		return err
-	} else if _, err := io.Copy(writer, bytes.NewReader(data)); err != nil {
+	data, err := json.Marshal(&obj)
+	if err != nil {
 		return err
 	}
-	if err := writer.Close(); err != nil {
-		// NOTE (Axel): Close()ing will commit any data written, so only do it in the happy path
-		return err
-	}
-
-	return nil
+	return q.cs.WriteFile(ctx, key, bytes.NewReader(data))
 }
 
 // Get
 func (q *querier[T]) Get(ctx context.Context, key string) (*T, error) {
-	reader, err := q.cs.bucket.Object(q.cs.Filename(key)).NewReader(ctx)
-	if err2 := wrapStorageError(err); err2 != nil {
-		return nil, fmt.Errorf("Get %s: %w", key, err2)
-	}
-	defer reader.Close()
-
-	data, err := ioutil.ReadAll(reader)
+	data, err := q.cs.GetFile(ctx, key)
 	if err != nil {
 		return nil, fmt.Errorf("Get %s: readall: %w", key, err)
 	}
