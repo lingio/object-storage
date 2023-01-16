@@ -13,6 +13,7 @@ type CloudStorage struct {
 	client *storage.Client
 	bucket *storage.BucketHandle
 
+	contenttype    string
 	filenameformat string
 }
 
@@ -20,6 +21,9 @@ type CloudStorage struct {
 // Defaults to `%s.json`
 type WithFilenameFormat string
 
+// WithContentType defines the MIME type of the file content.
+// Defaults to `application/json`
+type WithContentType string
 // NewCloudStorage
 func NewCloudStorage(bucket string, opts ...Option) (*CloudStorage, error) {
 	client, err := storage.NewClient(context.TODO())
@@ -33,7 +37,7 @@ func NewCloudStorage(bucket string, opts ...Option) (*CloudStorage, error) {
 		return nil, fmt.Errorf("init check: %w", err)
 	}
 
-	cs := &CloudStorage{client, client.Bucket(bucket), "%s.json"}
+	cs := &CloudStorage{client, client.Bucket(bucket), "%s.json", "application/json"}
 	for _, opt := range opts {
 		opt.apply(cs)
 	}
@@ -49,7 +53,7 @@ func (cs *CloudStorage) WriteFile(ctx context.Context, key string, reader io.Rea
 		If(storage.Conditions{DoesNotExist: true})
 
 	writer := o.NewWriter(ctx)
-	writer.ContentType = "application/json"
+	writer.ContentType = cs.contenttype
 
 	if _, err := io.Copy(writer, reader); err != nil {
 		return err
@@ -66,5 +70,5 @@ func (cs *CloudStorage) WriteFile(ctx context.Context, key string, reader io.Rea
 type Option interface {
 	apply(*CloudStorage)
 }
-
-func (f WithFilenameFormat) apply(cs *CloudStorage) { cs.filenameformat = string(f) }
+func (o WithFilenameFormat) apply(cs *CloudStorage) { cs.filenameformat = string(o) }
+func (o WithContentType) apply(cs *CloudStorage)    { cs.contenttype = string(o) }
