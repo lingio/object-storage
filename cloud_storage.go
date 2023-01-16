@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 
 	"cloud.google.com/go/storage"
 )
@@ -24,6 +25,7 @@ type WithFilenameFormat string
 // WithContentType defines the MIME type of the file content.
 // Defaults to `application/json`
 type WithContentType string
+
 // NewCloudStorage
 func NewCloudStorage(bucket string, opts ...Option) (*CloudStorage, error) {
 	client, err := storage.NewClient(context.TODO())
@@ -65,10 +67,26 @@ func (cs *CloudStorage) WriteFile(ctx context.Context, key string, reader io.Rea
 	return nil
 }
 
+func (cs *CloudStorage) GetFile(ctx context.Context, key string) ([]byte, error) {
+	reader, err := cs.bucket.Object(cs.Filename(key)).NewReader(ctx)
+	if err2 := wrapStorageError(err); err2 != nil {
+		return nil, fmt.Errorf("Get %s: %w", key, err2)
+	}
+	defer reader.Close()
+
+	data, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("Get %s: readall: %w", key, err)
+	}
+
+	return data, nil
+}
+
 // Options configures the CloudStorage.
 //	WithFilenameFormat
 type Option interface {
 	apply(*CloudStorage)
 }
+
 func (o WithFilenameFormat) apply(cs *CloudStorage) { cs.filenameformat = string(o) }
 func (o WithContentType) apply(cs *CloudStorage)    { cs.contenttype = string(o) }
