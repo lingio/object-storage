@@ -39,7 +39,12 @@ func NewCloudStorage(bucket string, opts ...Option) (*CloudStorage, error) {
 		return nil, fmt.Errorf("init check: %w", err)
 	}
 
-	cs := &CloudStorage{client, client.Bucket(bucket), "%s.json", "application/json"}
+	cs := &CloudStorage{
+		client:         client,
+		bucket:         client.Bucket(bucket),
+		contenttype:    "application/json",
+		filenameformat: "%s.json",
+	}
 	for _, opt := range opts {
 		opt.apply(cs)
 	}
