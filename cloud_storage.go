@@ -59,7 +59,10 @@ func (cs *CloudStorage) WriteFile(ctx context.Context, key string, reader io.Rea
 	o := cs.bucket.Object(cs.Filename(key)).
 		If(storage.Conditions{DoesNotExist: true})
 
-	writer := o.NewWriter(ctx)
+	cctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	writer := o.NewWriter(cctx)
 	writer.ContentType = cs.contenttype
 
 	if _, err := io.Copy(writer, reader); err != nil {
