@@ -64,6 +64,14 @@ func (cs *CloudStorage) WriteFile(ctx context.Context, key string, reader io.Rea
 
 	writer := o.NewWriter(cctx)
 	writer.ContentType = cs.contenttype
+	if s, ok := reader.(interface{ Size() int64 }); ok {
+		size := s.Size()
+		// try to upload small files directly we could omit chunking
+		// altogether but that automatically disables the built-in re-try behavior
+		if size < 1_000_000 {
+			writer.ChunkSize = int(size) + 100
+		}
+	}
 
 	if _, err := io.Copy(writer, reader); err != nil {
 		return err
@@ -95,6 +103,7 @@ func (cs *CloudStorage) Object(ctx context.Context, key string) *storage.ObjectH
 }
 
 // Options configures the CloudStorage.
+//
 //	WithFilenameFormat
 type Option interface {
 	apply(*CloudStorage)
